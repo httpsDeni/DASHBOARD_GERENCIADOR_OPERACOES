@@ -35,6 +35,8 @@
       //   takeProfit,
       // });
 
+      // TODO: Stub não aplica contract_size_per_lot do instrumento (XAUUSD=100, BTCUSD=1)
+      // Isso causará erro ~100x no XAUUSD. Piloto substituirá com domain real (rust_decimal).
       const riskAmount = accountSize * (riskPercent / 100);
       const pipRisk = Math.abs(entry - stop);
       const lotSize = riskAmount / pipRisk;
@@ -93,8 +95,6 @@
         >
           <option value="XAUUSD">XAUUSD (Ouro)</option>
           <option value="BTCUSD">BTCUSD (Bitcoin)</option>
-          <option value="EURUSD">EURUSD (Euro/Dólar)</option>
-          <option value="GBPUSD">GBPUSD (Libra/Dólar)</option>
         </select>
       </div>
 

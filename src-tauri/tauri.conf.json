@@ -32,16 +32,5 @@
       "uninstallerIcon": null,
       "installerHeaderIcon": null
     }
-  },
-  "security": {
-    "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self';"
-  },
-  "allowlist": {
-    "window": {
-      "close": true,
-      "hide": true,
-      "show": true,
-      "setTitle": true
-    }
   }
 }
