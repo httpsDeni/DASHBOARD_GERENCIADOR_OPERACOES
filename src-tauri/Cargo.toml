@@ -1,0 +1,18 @@
+[package]
+name = "gerenciador_risco"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+tauri = { version = "2.0", features = ["macos-private-api"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+ipc = { path = "crates/ipc" }
+application = { path = "crates/application" }
+domain = { path = "crates/domain" }
+infra = { path = "crates/infra" }
+
+[build-dependencies]
+tauri-build = "2.0"

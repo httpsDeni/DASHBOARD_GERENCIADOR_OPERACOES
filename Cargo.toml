@@ -1,0 +1,20 @@
+[workspace]
+members = [
+    "src-tauri",
+    "src-tauri/crates/domain",
+    "src-tauri/crates/application",
+    "src-tauri/crates/infra",
+    "src-tauri/crates/ipc",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+authors = ["Executor <noreply@anthropic.com>"]
+license = "MIT"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true

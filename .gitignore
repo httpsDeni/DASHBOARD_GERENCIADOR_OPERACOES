@@ -1,16 +1,33 @@
-/target
-**/target
-node_modules
-.DS_Store
-dist
-build
-*.db
-*.db-journal
-*.db-wal
-*.db-shm
+# Rust
+target/
+Cargo.lock
+*.rlib
+*.rmeta
+
+# Node
+node_modules/
+.npm
+npm-debug.log
+dist/
+build/
+
+# Tauri
+src-tauri/target/
+.tauri
+
+# Environment
 .env
-.env.*
-src-tauri/target
-.vscode/*
-!.vscode/extensions.json
-.worktrees/
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.vitest/
+coverage/

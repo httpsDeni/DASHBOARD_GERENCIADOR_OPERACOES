@@ -1,0 +1,47 @@
+{
+  "productName": "Gerenciador de Risco",
+  "version": "0.0.1",
+  "identifier": "com.gerenciador-risco.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "http://localhost:5173",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Gerenciador de Risco - XAUUSD/BTCUSD",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "nsis": {
+      "installerIcon": null,
+      "uninstallerIcon": null,
+      "installerHeaderIcon": null
+    }
+  },
+  "security": {
+    "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self';"
+  },
+  "allowlist": {
+    "window": {
+      "close": true,
+      "hide": true,
+      "show": true,
+      "setTitle": true
+    }
+  }
+}
