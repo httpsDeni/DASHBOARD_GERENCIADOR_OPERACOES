@@ -89,8 +89,7 @@ Drawdown Máx: ${data.maxDrawdown.toFixed(2)}%`;
           
           <div class="metrics-small">
             <div class="metric-item">
-              {@const trades = monthsData.find(m => m.month === month)?.totalTrades ?? 0}
-              {trades} trades
+              {monthsData.find(m => m.month === month)?.totalTrades ?? 0} trades
             </div>
           </div>
         {:else}
