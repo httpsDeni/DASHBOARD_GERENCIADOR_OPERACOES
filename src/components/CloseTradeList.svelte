@@ -11,7 +11,8 @@
   let extraFees: { [key: string]: string } = {};
   let errors: { [key: string]: string } = {};
 
-  const openTrades = trades.filter(t => t.status === 'opened' || t.status === 'planned');
+  // Status valores em português (do backend Piloto)
+  const openTrades = trades.filter(t => t.status === 'aberto' || t.status === 'planejado');
 
   async function closeTrade(trade: TradeDto): Promise<void> {
     errors[trade.id] = '';

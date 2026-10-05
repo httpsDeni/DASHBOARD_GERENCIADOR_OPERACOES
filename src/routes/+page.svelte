@@ -29,9 +29,31 @@
         year: selectedYear,
       });
 
-      // Converter YearlyStatsDto para MonthlyStatsDto[] para exibição
-      // Você precisaria chamar monthly_report para cada mês
-      // Por enquanto, vamos manter o array vazio ou carregar sob demanda
+      // Carregar dados mensais para cada mês do ano
+      const allMonthsData: MonthlyStatsDto[] = [];
+      for (let month = 1; month <= 12; month++) {
+        try {
+          const monthlyReport = await invoke<MonthlyStatsDto>('monthly_report', {
+            account_id: currentAccount.id,
+            year: selectedYear,
+            month,
+          });
+          allMonthsData.push(monthlyReport);
+        } catch {
+          // Se falhar, adiciona placeholder com zeros
+          allMonthsData.push({
+            year: selectedYear,
+            month,
+            pnl_abs: '0',
+            return_pct: '0',
+            num_trades: 0,
+            win_rate: '0',
+            profit_factor: null,
+            max_drawdown_pct: '0',
+          });
+        }
+      }
+      monthsData = allMonthsData;
     } catch (err) {
       console.error('Erro ao carregar relatório anual:', err);
     } finally {
@@ -49,10 +71,16 @@
         month,
       });
 
-      // Atualizar dados mensais
-      monthsData = monthsData.map(m =>
-        m.month === month && m.year === year ? report : m
-      );
+      // Atualizar/inserir dados mensais reais no array
+      const existingIndex = monthsData.findIndex(m => m.month === month && m.year === year);
+      if (existingIndex >= 0) {
+        // Atualizar entrada existente
+        monthsData[existingIndex] = report;
+      } else {
+        // Adicionar nova entrada
+        monthsData = [...monthsData, report];
+      }
+      monthsData = monthsData; // Trigger reactivity
     } catch (err) {
       console.error('Erro ao carregar relatório mensal:', err);
     } finally {
