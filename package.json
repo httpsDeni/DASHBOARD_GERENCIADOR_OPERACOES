@@ -4,6 +4,7 @@
   "description": "Gerenciador de Risco para XAUUSD/BTCUSD com Tauri v2 + SvelteKit",
   "type": "module",
   "scripts": {
+    "tauri": "tauri",
     "dev:frontend": "vite dev --port 5173",
     "build": "tauri build",
     "build:frontend": "vite build",
