@@ -1,10 +1,10 @@
 {
   "name": "gerenciador_risco",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Gerenciador de Risco para XAUUSD/BTCUSD com Tauri v2 + SvelteKit",
   "type": "module",
   "scripts": {
-    "dev": "tauri dev",
+    "dev:frontend": "vite dev --port 5173",
     "build": "tauri build",
     "build:frontend": "vite build",
     "test": "vitest",
@@ -17,6 +17,7 @@
     "@tauri-apps/api": "^2.0.0"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.70.3",
     "@sveltejs/vite-plugin-svelte": "^3.0.0",
@@ -24,6 +25,7 @@
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.0.0",
+    "jsdom": "^30.1.2",
     "svelte": "^4.2.20",
     "svelte-check": "^3.0.0",
     "terser": "^5.51.2",
