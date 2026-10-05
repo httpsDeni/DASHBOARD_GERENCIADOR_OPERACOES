@@ -3,6 +3,7 @@ name: Build installers
 on:
   push:
     branches: [scaffold/tauri-sveltekit-frontend]
+    tags: ["v*"]
   workflow_dispatch:
 
 jobs:
