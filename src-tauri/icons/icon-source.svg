@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FDE68A"/>
+      <stop offset="0.55" stop-color="#F5B942"/>
+      <stop offset="1" stop-color="#B45309"/>
+    </linearGradient>
+    <linearGradient id="wing" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#B45309"/>
+      <stop offset="0.5" stop-color="#F5B942"/>
+      <stop offset="1" stop-color="#FDE68A"/>
+    </linearGradient>
+    <radialGradient id="bgGlow" cx="0.5" cy="0.38" r="0.65">
+      <stop offset="0" stop-color="#1B2340"/>
+      <stop offset="1" stop-color="#09090B"/>
+    </radialGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1024" height="1024" rx="220" fill="#09090B"/>
+  <rect x="0" y="0" width="1024" height="1024" rx="220" fill="url(#bgGlow)"/>
+  <rect x="28" y="28" width="968" height="968" rx="196" fill="none" stroke="#F5B942" stroke-opacity="0.35" stroke-width="10"/>
+
+  <!-- auréola -->
+  <ellipse cx="512" cy="252" rx="148" ry="40" fill="none" stroke="#F5B942" stroke-opacity="0.5" stroke-width="30" filter="url(#soft)"/>
+  <ellipse cx="512" cy="252" rx="148" ry="40" fill="none" stroke="url(#gold)" stroke-width="24"/>
+
+  <!-- asa direita -->
+  <g fill="url(#wing)" stroke="#7C3A06" stroke-width="6" stroke-linejoin="round">
+    <path d="M640 640 C740 560 850 530 950 555 C910 575 895 590 888 610 C930 610 948 622 956 640 C915 655 870 678 820 700 C770 695 700 675 640 640 Z"/>
+    <path d="M655 690 C740 650 830 640 905 660 C860 672 830 685 810 700 C760 705 700 700 655 690 Z"/>
+    <path d="M670 735 C740 710 810 708 865 725 C820 738 780 748 745 760 C715 755 690 746 670 735 Z"/>
+  </g>
+  <!-- asa esquerda (espelho) -->
+  <g fill="url(#wing)" stroke="#7C3A06" stroke-width="6" stroke-linejoin="round">
+    <path d="M384 640 C284 560 174 530 74 555 C114 575 129 590 136 610 C94 610 76 622 68 640 C109 655 154 678 204 700 C254 695 324 675 384 640 Z"/>
+    <path d="M369 690 C284 650 194 640 119 660 C164 672 194 685 214 700 C264 705 324 700 369 690 Z"/>
+    <path d="M354 735 C284 710 214 708 159 725 C204 738 244 748 279 760 C309 755 334 746 354 735 Z"/>
+  </g>
+
+  <!-- letras GR -->
+  <text x="512" y="700" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="360" fill="url(#gold)" stroke="#7C3A06" stroke-width="4">GR</text>
+</svg>

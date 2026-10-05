@@ -1,115 +1,58 @@
-# Gerenciador de Risco - XAUUSD/BTCUSD
+# Gerenciador de Risco V1.00 — Dashboard e Gerenciador de Operações
 
-Aplicação desktop para gestão de risco em operações com XAUUSD e BTCUSD, construída com **Rust + Tauri v2 + SvelteKit**.
+Aplicação desktop para gestão de risco e acompanhamento de operações (XAUUSD, BTCUSD e majors), construída com **Rust + Tauri v2 + SvelteKit**. Desenvolvido por **[@devdeni](https://t.me/devdeni)**.
 
-## 🏗️ Arquitetura
+## Funcionalidades
 
-### Estrutura do Workspace Rust
+- **Dashboard Financial Terminal** — tema escuro (`#09090B`), números monospace, KPIs com glow, heatmap de P&L no calendário
+- **Importação MT5** — lê o relatório HTML do histórico de negociação (seção Posições), filtra só o mês visualizado
+- **Exportação CSV** das operações do mês
+- **Operações manuais** — adicionar, editar e excluir por dia
+- **Taxas e comissões** importadas e exibidas (coluna própria + totais)
+- **Estatísticas do mês** — total de trades, win rate, P&L, Profit Factor (2 decimais), drawdown máximo
+- **Saques** — badge dourada SAQUE no mês + opção de sacar o lucro total do mês
+- **Calculadora de trade** — presets Exness, instrumentos, FX automático, TP e risco %/valor
+- Conta, trades e saques persistidos em `localStorage` (sem banco externo)
 
-```
-src-tauri/
-├── Cargo.toml (app principal Tauri)
-├── src/
-│   ├── main.rs (entrypoint da aplicação)
-│   ├── commands.rs (stubs de IPC)
-│   └── build.rs
-├── tauri.conf.json (configuração Tauri com CSP restritiva)
-└── crates/
-    ├── domain/ (lógica de negócio - a implementar)
-    ├── application/ (casos de uso - a implementar)
-    ├── infra/ (integrações externas - a implementar)
-    └── ipc/ (handlers IPC - a implementar)
-```
+## Downloads
 
-### Frontend SvelteKit
+- **Windows:** instaladores `setup.exe` (NSIS) e `.msi` gerados pelo CI em cada push
+  (`Actions` > último run > Artifacts)
+- **macOS:** `.dmg` gerado automaticamente pelo CI no runner `macos-latest`
+  (sem assinatura Apple — ao abrir, use botão direito > Abrir)
 
-```
-src/
-├── routes/
-│   ├── +page.svelte (página principal com tabs)
-│   └── +layout.svelte
-├── components/
-│   ├── YearCalendar.svelte (heatmap anual 4×3)
-│   ├── TradeSizingForm.svelte (calculadora de posição)
-│   └── MonthlyDrilldown.svelte (detalhes mensais)
-├── lib/
-│   └── types.ts (tipos TypeScript strict)
-├── app.html
-├── app.css (estilos globais)
-└── +page.svelte
-```
+## Desenvolvimento
 
-## 🚀 Começando
-
-### Pré-requisitos
-
-- Node.js 18+
-- Rust 1.70+ (instale via rustup)
-- npm ou yarn
-
-### Instalação
-
-```bash
-cd C:\Users\devdeni\Desktop\GERENCIADOR_RISCO
+```powershell
 npm install
-npm run build
+npm run dev:frontend   # Vite em http://localhost:5173
+npx tauri dev          # app desktop
 ```
 
-### Desenvolvimento
+## Build local (Windows)
 
-```bash
-npm run dev       # Dev server (SvelteKit + Tauri)
-npm run build     # Build produção
-npm run test      # Testes
+```powershell
+npm run build          # gera setup.exe + .msi em target/release/bundle
 ```
 
-## 📊 Componentes
+Pré-requisitos: Node 20+, Rust stable. NSIS/WiX são baixados automaticamente pelo Tauri.
 
-### YearCalendar.svelte
-- Grid 4×3 de meses com heatmap divergente
-- Verde (>50% ganho) / Vermelho (<50% ganho) / Cinza (sem dados)
-- Acessibilidade: ARIA grid, navegação teclado, ícones ▲▼
-- Dark mode suportado
+## CI (GitHub Actions)
 
-### TradeSizingForm.svelte
-- Calculadora de posicionamento
-- Campos: Instrumento, Entry, Stop, Take Profit
-- TODO: Substituir stub por invoke() Tauri quando backend pronto
+O workflow [build.yml](.github/workflows/build.yml) compila em `windows-latest`
+(NSIS + MSI) e `macos-latest` (DMG) a cada push na branch principal.
 
-### MonthlyDrilldown.svelte
-- Detalhes mensais com métricas RF-05
-- Tabela de operações
+## Estrutura
 
-## 🔒 Segurança
+```text
+src/                    # frontend SvelteKit (rotas, componentes, lib)
+src/lib/mt5.ts          # parser do relatório HTML do MT5
+src/lib/stats.ts        # estatísticas mensais/anuais
+src/lib/*-storage.ts    # persistência local (conta, trades, saques)
+src-tauri/              # backend Rust (Tauri v2)
+static/                 # assets estáticos (favicon)
+```
 
-- CSP restritiva em tauri.conf.json
-- TypeScript strict mode
-- Sem shell capabilities
-- Sem fs arbitrário
+## Licença
 
-## 📝 Tipos TypeScript
-
-Veja src/lib/types.ts para Trade, MonthMetrics, PositionSizeResponse
-
-## 🧮 Stubs
-
-Dados mockados e cálculos locais por enquanto. Substituir por chamadas IPC reais quando Piloto implementar backend.
-
-## 📦 Scripts
-
-- npm run dev - Dev server
-- npm run build - Build produção
-- npm run test - Testes
-- npm run lint - ESLint
-- npm run type-check - Type check
-
-## 🎨 Design
-
-- WCAG 2.2 AA
-- Light + Dark mode
-- Responsive (mobile, tablet, desktop)
-- Paleta: Roxa principal, cores divergentes
-
----
-
-Scaffold criado por Claude Executor • 2026-10-05
+MIT.

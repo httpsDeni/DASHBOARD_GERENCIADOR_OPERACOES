@@ -30,3 +30,9 @@ src-tauri/target/
 # Testing
 .vitest/
 coverage/
+
+# SvelteKit generated (regenerável via npm run dev / build)
+.svelte-kit/
+
+# Relatórios MT5 pessoais (dados do usuário, não versionar)
+Relatorio 2026/

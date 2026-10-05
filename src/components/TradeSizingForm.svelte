@@ -1,49 +1,92 @@
 <script lang="ts">
-  import { invoke } from '@tauri-apps/api/core';
-  import type { CalculatePositionSizeRequest, PositionSizeResponseDto, AppErrorDto } from '$lib/types';
+  import {
+    INSTRUMENTS,
+    EXNESS_ACCOUNT_TYPES,
+    calculateLots,
+    fetchConversionRate,
+    type SizingResult,
+  } from '$lib/instruments';
+
+  // Saldo do dia (conta) e moeda, vindos da página
+  export let initialBalance: string = '10000';
+  export let accountCcy: string = 'USD';
 
   // State
   let symbol: string = 'XAUUSD';
   let side: string = 'compra';
   let entry: string = '';
   let stop: string = '';
-  let balance: string = '10000';
+  let take: string = '';
+  let balance: string = initialBalance;
+  let riskMode: 'pct' | 'fixed' = 'pct';
   let risk_pct: string = '2';
+  let riskFixed: string = '';
+  let accountTypeId: string = 'standard';
+  let leverage: string = '500';
+  let conversionRate: string = '1';
+  let rateSource: string = '';
+  let rateLoading: boolean = false;
 
-  let result: PositionSizeResponseDto | null = null;
+  let result: SizingResult | null = null;
   let error: string | null = null;
-  let loading: boolean = false;
 
-  async function calculatePositionSize(): Promise<void> {
-    error = null;
-    loading = true;
+  // Acompanha o saldo do dia enquanto o usuário não editou o campo
+  let balanceTouched: boolean = false;
+  $: if (!balanceTouched) {
+    balance = initialBalance;
+  }
 
-    if (!entry || !stop || entry === stop) {
-      error = 'Preencha os campos entry e stop corretamente';
-      loading = false;
+  $: spec = INSTRUMENTS.find((i) => i.symbol === symbol);
+  $: accountType = EXNESS_ACCOUNT_TYPES.find((t) => t.id === accountTypeId) ?? EXNESS_ACCOUNT_TYPES[0];
+
+  // Busca o câmbio automaticamente quando o par de moedas muda
+  let lastRatePair: string = '';
+  $: {
+    const pair = `${spec?.quoteCcy ?? ''}>${accountCcy}`;
+    if (pair !== lastRatePair && spec) {
+      lastRatePair = pair;
+      void refreshRate();
+    }
+  }
+
+  async function refreshRate(): Promise<void> {
+    if (!spec) return;
+    if (spec.quoteCcy === accountCcy) {
+      conversionRate = '1';
+      rateSource = 'paridade 1:1';
       return;
     }
-
+    rateLoading = true;
     try {
-      const request: CalculatePositionSizeRequest = {
+      const rate = await fetchConversionRate(spec.quoteCcy, accountCcy);
+      conversionRate = String(rate);
+      rateSource = `auto ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    } catch {
+      rateSource = 'manual (sem internet)';
+    } finally {
+      rateLoading = false;
+    }
+  }
+
+  function calculatePositionSize(): void {
+    error = null;
+    try {
+      result = calculateLots({
         symbol,
-        side,
+        balance,
+        riskMode,
+        riskPct: risk_pct,
+        riskFixed,
         entry,
         stop,
-        balance,
-        risk_pct,
-      };
-
-      const response = await invoke<PositionSizeResponseDto>('calculate_position_size', request);
-      result = response;
+        take,
+        conversionRate,
+        leverage,
+        commissionPerLotUsd: accountType.commissionPerLotUsd,
+      });
     } catch (err: unknown) {
-      if (typeof err === 'object' && err !== null && 'message' in err) {
-        error = (err as AppErrorDto).message || 'Erro ao calcular posição';
-      } else {
-        error = err instanceof Error ? err.message : 'Erro ao calcular posição';
-      }
-    } finally {
-      loading = false;
+      result = null;
+      error = err instanceof Error ? err.message : 'Erro ao calcular posição';
     }
   }
 
@@ -52,8 +95,16 @@
     side = 'compra';
     entry = '';
     stop = '';
-    balance = '10000';
+    take = '';
+    balance = initialBalance;
+    balanceTouched = false;
+    riskMode = 'pct';
     risk_pct = '2';
+    riskFixed = '';
+    accountTypeId = 'standard';
+    leverage = '500';
+    conversionRate = '1';
+    rateSource = '';
     result = null;
     error = null;
   }
@@ -72,25 +123,16 @@
     <div class="form-row">
       <div class="form-group">
         <label for="symbol">Instrumento:</label>
-        <select
-          id="symbol"
-          bind:value={symbol}
-          required
-          aria-required="true"
-        >
-          <option value="XAUUSD">XAUUSD (Ouro)</option>
-          <option value="BTCUSD">BTCUSD (Bitcoin)</option>
+        <select id="symbol" bind:value={symbol} required aria-required="true">
+          {#each INSTRUMENTS as inst}
+            <option value={inst.symbol}>{inst.label}</option>
+          {/each}
         </select>
       </div>
 
       <div class="form-group">
         <label for="side">Operação:</label>
-        <select
-          id="side"
-          bind:value={side}
-          required
-          aria-required="true"
-        >
+        <select id="side" bind:value={side} required aria-required="true">
           <option value="compra">Compra</option>
           <option value="venda">Venda</option>
         </select>
@@ -125,11 +167,12 @@
 
     <div class="form-row">
       <div class="form-group">
-        <label for="balance">Saldo da Conta:</label>
+        <label for="balance">Saldo da Conta ({accountCcy}, do dia):</label>
         <input
           id="balance"
           type="text"
           bind:value={balance}
+          on:input={() => (balanceTouched = true)}
           placeholder="10000"
           required
           aria-required="true"
@@ -137,25 +180,113 @@
       </div>
 
       <div class="form-group">
-        <label for="risk-pct">Risco (%):</label>
+        <label for="risk-mode">Risco em:</label>
+        <select id="risk-mode" bind:value={riskMode} aria-label="Modo de risco">
+          <option value="pct">% do saldo</option>
+          <option value="fixed">Valor ({accountCcy})</option>
+        </select>
+      </div>
+
+      {#if riskMode === 'pct'}
+        <div class="form-group">
+          <label for="risk-pct">Risco (%):</label>
+          <input
+            id="risk-pct"
+            type="text"
+            bind:value={risk_pct}
+            placeholder="2"
+            required
+            aria-required="true"
+          />
+        </div>
+      {:else}
+        <div class="form-group">
+          <label for="risk-fixed">Risco ({accountCcy}):</label>
+          <input
+            id="risk-fixed"
+            type="text"
+            bind:value={riskFixed}
+            placeholder="Ex: 500.00"
+            required
+            aria-required="true"
+          />
+        </div>
+      {/if}
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="take">Take Profit (opcional):</label>
         <input
-          id="risk-pct"
+          id="take"
           type="text"
-          bind:value={risk_pct}
-          placeholder="2"
-          required
-          aria-required="true"
+          bind:value={take}
+          placeholder="Ex: 2060.00"
         />
       </div>
     </div>
 
+    <div class="form-row">
+      <div class="form-group">
+        <label for="account-type">Tipo de Conta (Exness):</label>
+        <select id="account-type" bind:value={accountTypeId} required aria-required="true">
+          {#each EXNESS_ACCOUNT_TYPES as t}
+            <option value={t.id}>{t.label}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="leverage">Alavancagem:</label>
+        <select id="leverage" bind:value={leverage} required aria-required="true">
+          <option value="100">1:100</option>
+          <option value="200">1:200</option>
+          <option value="500">1:500</option>
+          <option value="1000">1:1000</option>
+          <option value="2000">1:2000</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="conversion">Conversão {spec?.quoteCcy ?? ''} → {accountCcy}:</label>
+        <input
+          id="conversion"
+          type="text"
+          bind:value={conversionRate}
+          placeholder="1"
+          required
+          aria-required="true"
+        />
+      </div>
+      <div class="form-group">
+        <label for="rate-refresh">Cotação:</label>
+        <div class="rate-row">
+          <button
+            id="rate-refresh"
+            type="button"
+            class="btn btn-secondary"
+            on:click={() => void refreshRate()}
+            disabled={rateLoading}
+          >
+            {rateLoading ? 'Buscando...' : 'Atualizar'}
+          </button>
+          {#if rateSource}
+            <span class="rate-source">{rateSource}</span>
+          {/if}
+        </div>
+      </div>
+    </div>
+    {#if spec && spec.quoteCcy !== accountCcy && !rateSource.startsWith('auto')}
+      <p class="result-note">
+        Sem internet a taxa fica manual: informe 1 {spec.quoteCcy} em {accountCcy}.
+      </p>
+    {/if}
+
     <div class="form-actions">
-      <button type="submit" disabled={loading} class="btn btn-primary">
-        {loading ? 'Calculando...' : 'Calcular Posição'}
-      </button>
-      <button type="button" on:click={reset} class="btn btn-secondary">
-        Limpar
-      </button>
+      <button type="submit" class="btn btn-primary">Calcular Posição</button>
+      <button type="button" on:click={reset} class="btn btn-secondary">Limpar</button>
     </div>
   </form>
 
@@ -170,18 +301,45 @@
         </div>
 
         <div class="result-item">
-          <span class="result-label">Risco Efetivo:</span>
-          <span class="result-value result-risk">{result.risk_ccy_efetivo}</span>
+          <span class="result-label">Risco ({accountCcy}):</span>
+          <span class="result-value result-risk">{result.riskAccount}</span>
         </div>
 
         <div class="result-item">
           <span class="result-label">Distância do Stop:</span>
-          <span class="result-value">{result.stop_distance}</span>
+          <span class="result-value">{result.stopDistance}</span>
         </div>
+
+        <div class="result-item">
+          <span class="result-label">Margem Estimada ({accountCcy}):</span>
+          <span class="result-value">{result.marginAccount}</span>
+        </div>
+
+        <div class="result-item">
+          <span class="result-label">Comissão Est. (USD, ida+volta):</span>
+          <span class="result-value">{result.commissionUsd}</span>
+        </div>
+
+        <div class="result-item">
+          <span class="result-label">Stop por Lote ({spec?.quoteCcy}):</span>
+          <span class="result-value">{result.stopValuePerLotQuote}</span>
+        </div>
+
+        {#if result.rewardAccount !== null}
+          <div class="result-item">
+            <span class="result-label">Recompensa ({accountCcy}):</span>
+            <span class="result-value result-reward">{result.rewardAccount}</span>
+          </div>
+
+          <div class="result-item">
+            <span class="result-label">R:R:</span>
+            <span class="result-value result-reward">{result.rrRatio}</span>
+          </div>
+        {/if}
       </div>
 
       <p class="result-note">
-        ℹ️ Valores calculados pelo backend. Validar com seu broker.
+        Cálculo local por especificações padrão (contrato {spec?.contractSize}/lote). Comissão e margem são estimativas — validar com a Exness.
       </p>
     </div>
   {/if}
@@ -191,17 +349,19 @@
   .form-container {
     max-width: 600px;
     margin: 0 auto;
-    padding: 2rem;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1.25rem 1.5rem;
+    background-color: #09090b;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 4px;
   }
 
   .form-title {
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin-bottom: 1.5rem;
-    color: #1f2937;
+    font-size: 1.05rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
+    color: #fafafa;
   }
 
   .form {
@@ -211,8 +371,8 @@
   .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
   }
 
   .form-group {
@@ -221,160 +381,188 @@
   }
 
   .form-group label {
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    color: #374151;
-    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    color: #71717a;
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
   .form-group input,
   .form-group select {
-    padding: 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 0.95rem;
-    font-family: inherit;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    padding: 0.55rem 0.7rem;
+    background-color: #131318;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+    font-size: 0.85rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: #e4e4e7;
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
 
   .form-group input:focus,
   .form-group select:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: rgba(34, 211, 238, 0.6);
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.15);
   }
 
   .form-group input:disabled {
-    background-color: #f3f4f6;
+    opacity: 0.5;
     cursor: not-allowed;
   }
 
   .alert {
-    padding: 1rem;
-    border-radius: 6px;
+    padding: 0.6rem 0.8rem;
+    border-radius: 3px;
     margin-bottom: 1rem;
-    font-size: 0.95rem;
+    font-size: 0.8rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
 
   .alert-error {
-    background-color: #fee2e2;
-    color: #991b1b;
-    border: 1px solid #fca5a5;
+    background-color: rgba(239, 68, 68, 0.08);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+  }
+
+  .rate-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .rate-row .btn {
+    flex-shrink: 0;
+  }
+
+  .rate-source {
+    font-size: 0.72rem;
+    color: #71717a;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
 
   .form-actions {
     display: flex;
-    gap: 1rem;
-    margin-top: 1.5rem;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
   }
 
   .btn {
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.95rem;
-    font-weight: 500;
+    padding: 0.6rem 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+    font-size: 0.82rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
     font-family: inherit;
   }
 
   .btn-primary {
-    background-color: #3b82f6;
-    color: white;
+    background-color: rgba(34, 197, 94, 0.12);
+    border-color: rgba(34, 197, 94, 0.45);
+    color: #4ade80;
   }
 
   .btn-primary:hover:not(:disabled) {
-    background-color: #2563eb;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: rgba(34, 197, 94, 0.2);
+    box-shadow: 0 0 14px rgba(34, 197, 94, 0.25);
   }
 
   .btn-primary:focus {
-    outline: 2px solid #3b82f6;
+    outline: 1px solid #4ade80;
     outline-offset: 2px;
   }
 
   .btn-primary:disabled {
-    opacity: 0.6;
+    opacity: 0.4;
     cursor: not-allowed;
   }
 
   .btn-secondary {
-    background-color: #e5e7eb;
-    color: #1f2937;
+    background-color: #131318;
+    color: #e4e4e7;
   }
 
   .btn-secondary:hover {
-    background-color: #d1d5db;
+    border-color: rgba(255, 255, 255, 0.3);
   }
 
   .btn-secondary:focus {
-    outline: 2px solid #6b7280;
+    outline: 1px solid #71717a;
     outline-offset: 2px;
   }
 
   .result-container {
-    margin-top: 2rem;
-    padding: 1.5rem;
-    background-color: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    border-radius: 6px;
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    background-color: rgba(34, 197, 94, 0.06);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 3px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 18px rgba(34, 197, 94, 0.08);
   }
 
   .result-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #166534;
-    margin-bottom: 1rem;
+    font-size: 0.72rem;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #86efac;
+    margin-bottom: 0.75rem;
   }
 
   .result-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: 0.6rem;
+    margin-bottom: 0.75rem;
   }
 
   .result-item {
     display: flex;
     flex-direction: column;
-    padding: 0.75rem;
-    background-color: white;
-    border-radius: 4px;
+    padding: 0.6rem 0.75rem;
+    background-color: #0c0c10;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
   }
 
   .result-label {
-    font-size: 0.75rem;
-    color: #6b7280;
+    font-size: 0.62rem;
+    color: #71717a;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.08em;
     margin-bottom: 0.25rem;
   }
 
   .result-value {
-    font-size: 1.25rem;
-    font-weight: bold;
-    color: #166534;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 1.15rem;
+    font-weight: 650;
+    color: #4ade80;
+    font-variant-numeric: tabular-nums;
   }
 
   .result-risk {
-    color: #dc2626;
+    color: #f87171;
   }
 
   .result-reward {
-    color: #16a34a;
+    color: #4ade80;
   }
 
   .result-note {
-    font-size: 0.8rem;
-    color: #6b7280;
-    font-style: italic;
-    margin-top: 1rem;
+    font-size: 0.75rem;
+    color: #71717a;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    margin-top: 0.75rem;
   }
 
   @media (max-width: 640px) {
     .form-container {
-      padding: 1rem;
+      padding: 0.9rem;
     }
 
     .form-row {
@@ -391,59 +579,6 @@
 
     .btn {
       width: 100%;
-    }
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .form-container {
-      background-color: #1f2937;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-
-    .form-title {
-      color: #f9fafb;
-    }
-
-    .form-group label {
-      color: #d1d5db;
-    }
-
-    .form-group input,
-    .form-group select {
-      background-color: #374151;
-      border-color: #4b5563;
-      color: #f9fafb;
-    }
-
-    .form-group input:focus,
-    .form-group select:focus {
-      border-color: #60a5fa;
-      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
-    }
-
-    .result-container {
-      background-color: #164e63;
-      border-color: #06b6d4;
-    }
-
-    .result-item {
-      background-color: #1f2937;
-    }
-
-    .result-title {
-      color: #a7f3d0;
-    }
-
-    .result-label {
-      color: #9ca3af;
-    }
-
-    .result-value {
-      color: #86efac;
-    }
-
-    .result-note {
-      color: #9ca3af;
     }
   }
 </style>

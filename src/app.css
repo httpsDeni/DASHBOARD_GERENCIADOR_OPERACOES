@@ -16,30 +16,28 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f3f4f6;
-  color: #1f2937;
+  background-color: #09090b;
+  background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(34, 211, 238, 0.06), transparent);
+  color: #e4e4e7;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #111827;
-    color: #f9fafb;
-  }
+::selection {
+  background-color: rgba(34, 211, 238, 0.3);
 }
 
 /* Acessibilidade */
 :focus-visible {
-  outline: 2px solid #667eea;
+  outline: 1px solid #22d3ee;
   outline-offset: 2px;
 }
 
 button:focus-visible {
-  outline: 2px solid #667eea;
-  outline-offset: -2px;
+  outline: 1px solid #22d3ee;
+  outline-offset: -1px;
 }
 
 a:focus-visible {
-  outline: 2px solid #667eea;
+  outline: 1px solid #22d3ee;
   outline-offset: 4px;
 }
 
@@ -57,35 +55,21 @@ a:focus-visible {
   }
 }
 
-/* Scrollbar customizada */
+/* Scrollbar terminal */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f3f4f6;
+  background: #0c0c10;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 4px;
+  background: #27272a;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
-
-@media (prefers-color-scheme: dark) {
-  ::-webkit-scrollbar-track {
-    background: #1f2937;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: #4b5563;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: #6b7280;
-  }
+  background: #3f3f46;
 }

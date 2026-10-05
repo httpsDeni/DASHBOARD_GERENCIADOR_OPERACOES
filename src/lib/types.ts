@@ -114,6 +114,14 @@ export interface AppErrorDto {
   message: string;
 }
 
+export interface Withdrawal {
+  id: string;
+  account_id: string;
+  amount: string;
+  date: string; // ISO
+  created_at: string; // ISO
+}
+
 // Legacy interfaces para manter compatibilidade (mapeados dos DTOs)
 
 export interface Trade extends TradeDto {}
