@@ -1,101 +1,72 @@
 <script lang="ts">
+  import { invoke } from '@tauri-apps/api/core';
   import YearCalendar from '$components/YearCalendar.svelte';
   import TradeSizingForm from '$components/TradeSizingForm.svelte';
   import MonthlyDrilldown from '$components/MonthlyDrilldown.svelte';
-  import type { MonthMetrics, Trade } from '$lib/types';
+  import CreateAccountModal from '$components/CreateAccountModal.svelte';
+  import type { MonthMetrics, TradeDto, AccountDto, YearlyStatsDto, MonthlyStatsDto } from '$lib/types';
 
   let currentTab: 'dashboard' | 'calculator' | 'drilldown' = 'dashboard';
   let selectedMonth: number | null = null;
   let selectedYear: number = new Date().getFullYear();
+  let createAccountModalOpen: boolean = true; // Abrir logo no inicio
 
-  // Mock data para demonstração
-  const mockMonthsData: MonthMetrics[] = [
-    {
-      month: 1,
-      year: 2024,
-      totalTrades: 12,
-      winningTrades: 8,
-      losingTrades: 4,
-      winRate: 66.7,
-      totalPnL: 850.5,
-      averageRiskRewardRatio: 1.8,
-      maxDrawdown: 5.2,
-    },
-    {
-      month: 2,
-      year: 2024,
-      totalTrades: 10,
-      winningTrades: 4,
-      losingTrades: 6,
-      winRate: 40.0,
-      totalPnL: -320.0,
-      averageRiskRewardRatio: 0.9,
-      maxDrawdown: 8.5,
-    },
-    {
-      month: 3,
-      year: 2024,
-      totalTrades: 15,
-      winningTrades: 10,
-      losingTrades: 5,
-      winRate: 66.7,
-      totalPnL: 1200.0,
-      averageRiskRewardRatio: 2.1,
-      maxDrawdown: 3.1,
-    },
-    {
-      month: 4,
-      year: 2024,
-      totalTrades: 8,
-      winningTrades: 5,
-      losingTrades: 3,
-      winRate: 62.5,
-      totalPnL: 450.0,
-      averageRiskRewardRatio: 1.5,
-      maxDrawdown: 4.0,
-    },
-  ];
+  // Estado da conta
+  let currentAccount: AccountDto | null = null;
+  let monthsData: MonthlyStatsDto[] = [];
+  let trades: TradeDto[] = [];
+  let loading: boolean = false;
 
-  // Mock trades para drill-down
-  const mockTrades: Trade[] = [
-    {
-      id: '1',
-      instrument: 'XAUUSD',
-      entry: 2050.00,
-      stop: 2045.00,
-      takeProfit: 2060.00,
-      date: new Date(2024, 0, 5),
-      pnl: 150.00,
-      riskPercentage: 2.0,
-      lotSize: 0.1,
-    },
-    {
-      id: '2',
-      instrument: 'BTCUSD',
-      entry: 42500.00,
-      stop: 42000.00,
-      takeProfit: 43500.00,
-      date: new Date(2024, 0, 8),
-      pnl: -100.00,
-      riskPercentage: 2.0,
-      lotSize: 0.05,
-    },
-    {
-      id: '3',
-      instrument: 'XAUUSD',
-      entry: 2055.00,
-      stop: 2050.00,
-      takeProfit: 2065.00,
-      date: new Date(2024, 0, 12),
-      pnl: 200.00,
-      riskPercentage: 2.0,
-      lotSize: 0.12,
-    },
-  ];
+  async function loadYearReport(): Promise<void> {
+    if (!currentAccount) return;
+    loading = true;
+    try {
+      const report = await invoke<YearlyStatsDto>('year_report', {
+        account_id: currentAccount.id,
+        year: selectedYear,
+      });
+
+      // Converter YearlyStatsDto para MonthlyStatsDto[] para exibição
+      // Você precisaria chamar monthly_report para cada mês
+      // Por enquanto, vamos manter o array vazio ou carregar sob demanda
+    } catch (err) {
+      console.error('Erro ao carregar relatório anual:', err);
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function loadMonthlyReport(month: number, year: number): Promise<void> {
+    if (!currentAccount) return;
+    loading = true;
+    try {
+      const report = await invoke<MonthlyStatsDto>('monthly_report', {
+        account_id: currentAccount.id,
+        year,
+        month,
+      });
+
+      // Atualizar dados mensais
+      monthsData = monthsData.map(m =>
+        m.month === month && m.year === year ? report : m
+      );
+    } catch (err) {
+      console.error('Erro ao carregar relatório mensal:', err);
+    } finally {
+      loading = false;
+    }
+  }
+
+  function handleAccountCreated(account: AccountDto): void {
+    currentAccount = account;
+    createAccountModalOpen = false;
+    loadYearReport();
+  }
 
   function handleMonthClick(month: number, year: number): void {
     selectedMonth = month;
     selectedYear = year;
+    loadMonthlyReport(month, year);
     currentTab = 'drilldown';
   }
 
@@ -117,52 +88,79 @@
     </div>
   </header>
 
-  <div class="tab-navigation">
-    <button
-      class="tab-button {currentTab === 'dashboard' ? 'active' : ''}"
-      on:click={() => (currentTab = 'dashboard')}
-      aria-current={currentTab === 'dashboard' ? 'page' : undefined}
-    >
-      📊 Dashboard
-    </button>
-    <button
-      class="tab-button {currentTab === 'calculator' ? 'active' : ''}"
-      on:click={() => (currentTab = 'calculator')}
-      aria-current={currentTab === 'calculator' ? 'page' : undefined}
-    >
-      🧮 Calculadora
-    </button>
-  </div>
+  {#if !currentAccount}
+    <div class="no-account-message">
+      <p>Nenhuma conta selecionada. Crie uma nova conta para começar.</p>
+      <button class="btn-create-account" on:click={() => (createAccountModalOpen = true)}>
+        + Criar Conta
+      </button>
+    </div>
+  {:else}
+    <div class="tab-navigation">
+      <button
+        class="tab-button {currentTab === 'dashboard' ? 'active' : ''}"
+        on:click={() => (currentTab = 'dashboard')}
+        aria-current={currentTab === 'dashboard' ? 'page' : undefined}
+      >
+        📊 Dashboard
+      </button>
+      <button
+        class="tab-button {currentTab === 'calculator' ? 'active' : ''}"
+        on:click={() => (currentTab = 'calculator')}
+        aria-current={currentTab === 'calculator' ? 'page' : undefined}
+      >
+        🧮 Calculadora
+      </button>
+      <div class="account-info">
+        Conta: {currentAccount.id.substring(0, 8)}... | Saldo: {currentAccount.balance_inicial} {currentAccount.ccy}
+      </div>
+    </div>
 
-  <div class="content">
-    {#if currentTab === 'dashboard'}
-      <section class="tab-content" aria-label="Dashboard anual">
-        <YearCalendar
-          year={selectedYear}
-          monthsData={mockMonthsData}
-          onMonthClick={handleMonthClick}
-        />
-      </section>
-    {/if}
+    <div class="content">
+      {#if currentTab === 'dashboard'}
+        <section class="tab-content" aria-label="Dashboard anual">
+          {#if loading}
+            <div class="loading">Carregando dados...</div>
+          {:else}
+            <YearCalendar
+              year={selectedYear}
+              monthsData={monthsData}
+              onMonthClick={handleMonthClick}
+            />
+          {/if}
+        </section>
+      {/if}
 
-    {#if currentTab === 'calculator'}
-      <section class="tab-content" aria-label="Calculadora de posicionamento">
-        <TradeSizingForm />
-      </section>
-    {/if}
+      {#if currentTab === 'calculator'}
+        <section class="tab-content" aria-label="Calculadora de posicionamento">
+          <TradeSizingForm />
+        </section>
+      {/if}
 
-    {#if currentTab === 'drilldown' && selectedMonth !== null}
-      <section class="tab-content" aria-label="Detalhes mensais">
-        <MonthlyDrilldown
-          month={selectedMonth}
-          year={selectedYear}
-          trades={mockTrades}
-          metrics={mockMonthsData.find((m) => m.month === selectedMonth) || null}
-          onBack={handleBackFromDrilldown}
-        />
-      </section>
-    {/if}
-  </div>
+      {#if currentTab === 'drilldown' && selectedMonth !== null}
+        <section class="tab-content" aria-label="Detalhes mensais">
+          {#if loading}
+            <div class="loading">Carregando relatório mensal...</div>
+          {:else}
+            {@const selectedMonthData = monthsData.find((m) => m.month === selectedMonth)}
+            {#if selectedMonthData}
+              <MonthlyDrilldown
+                month={selectedMonth}
+                year={selectedYear}
+                trades={trades}
+                metrics={selectedMonthData}
+                onBack={handleBackFromDrilldown}
+              />
+            {:else}
+              <div class="no-data">Nenhum dado para este mês.</div>
+            {/if}
+          {/if}
+        </section>
+      {/if}
+    </div>
+  {/if}
+
+  <CreateAccountModal isOpen={createAccountModalOpen} onAccountCreated={handleAccountCreated} />
 
   <footer class="app-footer">
     <p>
@@ -214,6 +212,43 @@
     opacity: 0.9;
   }
 
+  .no-account-message {
+    padding: 3rem 2rem;
+    text-align: center;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin: 2rem auto;
+    max-width: 600px;
+  }
+
+  .no-account-message p {
+    font-size: 1.1rem;
+    color: #6b7280;
+    margin-bottom: 1.5rem;
+  }
+
+  .btn-create-account {
+    padding: 0.75rem 2rem;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .btn-create-account:hover {
+    background-color: #2563eb;
+  }
+
+  .btn-create-account:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+
   .tab-navigation {
     background-color: white;
     border-bottom: 1px solid #e5e7eb;
@@ -223,6 +258,8 @@
     margin: 0 auto;
     width: 100%;
     padding: 0 2rem;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .tab-button {
@@ -286,6 +323,28 @@
     margin: 0;
   }
 
+  .account-info {
+    margin-left: auto;
+    font-size: 0.875rem;
+    color: #6b7280;
+    padding: 1rem 1.5rem;
+    border-left: 1px solid #e5e7eb;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 2rem;
+    color: #6b7280;
+    font-size: 1rem;
+  }
+
+  .no-data {
+    text-align: center;
+    padding: 2rem;
+    color: #6b7280;
+    font-size: 1rem;
+  }
+
   @media (max-width: 768px) {
     .app-header {
       padding: 1.5rem;
@@ -318,6 +377,15 @@
       background-color: #111827;
     }
 
+    .no-account-message {
+      background-color: #1f2937;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .no-account-message p {
+      color: #d1d5db;
+    }
+
     .tab-navigation {
       background-color: #1f2937;
       border-bottom-color: #374151;
@@ -335,6 +403,16 @@
     .tab-button.active {
       color: #a5b4fc;
       border-bottom-color: #a5b4fc;
+    }
+
+    .account-info {
+      color: #d1d5db;
+      border-left-color: #374151;
+    }
+
+    .loading,
+    .no-data {
+      color: #d1d5db;
     }
   }
 </style>

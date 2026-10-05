@@ -1,19 +1,19 @@
 <script lang="ts">
-  import type { PositionSizeRequest, PositionSizeResponse } from '$lib/types';
+  import { invoke } from '@tauri-apps/api/core';
+  import type { CalculatePositionSizeRequest, PositionSizeResponseDto, AppErrorDto } from '$lib/types';
 
   // State
-  let instrument: string = 'XAUUSD';
-  let entry: number | null = null;
-  let stop: number | null = null;
-  let takeProfit: number | null = null;
-  let accountSize: number = 10000;
-  let riskPercent: number = 2;
+  let symbol: string = 'XAUUSD';
+  let side: string = 'compra';
+  let entry: string = '';
+  let stop: string = '';
+  let balance: string = '10000';
+  let risk_pct: string = '2';
 
-  let result: PositionSizeResponse | null = null;
+  let result: PositionSizeResponseDto | null = null;
   let error: string | null = null;
   let loading: boolean = false;
 
-  // TODO: Substituir stub por invoke() real do Tauri quando IPC estiver pronto
   async function calculatePositionSize(): Promise<void> {
     error = null;
     loading = true;
@@ -25,50 +25,35 @@
     }
 
     try {
-      // STUB MOCK - Simula cálculo local
-      // Quando o Piloto implementar o backend IPC, substituir por:
-      // const response = await invoke<PositionSizeResponse>('calculate_position_size', {
-      //   entry,
-      //   stop,
-      //   accountSize,
-      //   riskPercent,
-      //   takeProfit,
-      // });
-
-      // TODO: Stub não aplica contract_size_per_lot do instrumento (XAUUSD=100, BTCUSD=1)
-      // Isso causará erro ~100x no XAUUSD. Piloto substituirá com domain real (rust_decimal).
-      const riskAmount = accountSize * (riskPercent / 100);
-      const pipRisk = Math.abs(entry - stop);
-      const lotSize = riskAmount / pipRisk;
-
-      let rewardAmount: number | undefined;
-      let riskRewardRatio: number | undefined;
-
-      if (takeProfit) {
-        rewardAmount = Math.abs(takeProfit - entry) * lotSize;
-        riskRewardRatio = rewardAmount / riskAmount;
-      }
-
-      result = {
-        lotSize: Math.round(lotSize * 100) / 100,
-        riskAmount: Math.round(riskAmount * 100) / 100,
-        rewardAmount: rewardAmount ? Math.round(rewardAmount * 100) / 100 : undefined,
-        riskRewardRatio: riskRewardRatio ? Math.round(riskRewardRatio * 100) / 100 : undefined,
+      const request: CalculatePositionSizeRequest = {
+        symbol,
+        side,
+        entry,
+        stop,
+        balance,
+        risk_pct,
       };
+
+      const response = await invoke<PositionSizeResponseDto>('calculate_position_size', request);
+      result = response;
     } catch (err: unknown) {
-      error = err instanceof Error ? err.message : 'Erro ao calcular posição';
+      if (typeof err === 'object' && err !== null && 'message' in err) {
+        error = (err as AppErrorDto).message || 'Erro ao calcular posição';
+      } else {
+        error = err instanceof Error ? err.message : 'Erro ao calcular posição';
+      }
     } finally {
       loading = false;
     }
   }
 
   function reset(): void {
-    instrument = 'XAUUSD';
-    entry = null;
-    stop = null;
-    takeProfit = null;
-    accountSize = 10000;
-    riskPercent = 2;
+    symbol = 'XAUUSD';
+    side = 'compra';
+    entry = '';
+    stop = '';
+    balance = '10000';
+    risk_pct = '2';
     result = null;
     error = null;
   }
@@ -86,10 +71,10 @@
   <form on:submit|preventDefault={calculatePositionSize} class="form">
     <div class="form-row">
       <div class="form-group">
-        <label for="instrument">Instrumento:</label>
+        <label for="symbol">Instrumento:</label>
         <select
-          id="instrument"
-          bind:value={instrument}
+          id="symbol"
+          bind:value={symbol}
           required
           aria-required="true"
         >
@@ -99,70 +84,65 @@
       </div>
 
       <div class="form-group">
-        <label for="entry">Entry (Entrada):</label>
-        <input
-          id="entry"
-          type="number"
-          bind:value={entry}
-          placeholder="Ex: 2050.00"
-          step="0.01"
+        <label for="side">Operação:</label>
+        <select
+          id="side"
+          bind:value={side}
           required
           aria-required="true"
-        />
+        >
+          <option value="compra">Compra</option>
+          <option value="venda">Venda</option>
+        </select>
       </div>
     </div>
 
     <div class="form-row">
+      <div class="form-group">
+        <label for="entry">Entry (Entrada):</label>
+        <input
+          id="entry"
+          type="text"
+          bind:value={entry}
+          placeholder="Ex: 2050.00"
+          required
+          aria-required="true"
+        />
+      </div>
+
       <div class="form-group">
         <label for="stop">Stop Loss:</label>
         <input
           id="stop"
-          type="number"
+          type="text"
           bind:value={stop}
           placeholder="Ex: 2045.00"
-          step="0.01"
           required
           aria-required="true"
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="takeprofit">Take Profit (Opcional):</label>
-        <input
-          id="takeprofit"
-          type="number"
-          bind:value={takeProfit}
-          placeholder="Ex: 2060.00"
-          step="0.01"
         />
       </div>
     </div>
 
     <div class="form-row">
       <div class="form-group">
-        <label for="account-size">Saldo da Conta (USD):</label>
+        <label for="balance">Saldo da Conta:</label>
         <input
-          id="account-size"
-          type="number"
-          bind:value={accountSize}
+          id="balance"
+          type="text"
+          bind:value={balance}
           placeholder="10000"
-          min="100"
-          step="100"
           required
           aria-required="true"
         />
       </div>
 
       <div class="form-group">
-        <label for="risk-percent">Risco (%):</label>
+        <label for="risk-pct">Risco (%):</label>
         <input
-          id="risk-percent"
-          type="number"
-          bind:value={riskPercent}
+          id="risk-pct"
+          type="text"
+          bind:value={risk_pct}
           placeholder="2"
-          min="0.1"
-          max="10"
-          step="0.1"
           required
           aria-required="true"
         />
@@ -186,31 +166,22 @@
       <div class="result-grid">
         <div class="result-item">
           <span class="result-label">Tamanho do Lote:</span>
-          <span class="result-value">{result.lotSize.toFixed(4)}</span>
+          <span class="result-value">{result.lots}</span>
         </div>
 
         <div class="result-item">
-          <span class="result-label">Risco (USD):</span>
-          <span class="result-value result-risk">${result.riskAmount.toFixed(2)}</span>
+          <span class="result-label">Risco Efetivo:</span>
+          <span class="result-value result-risk">{result.risk_ccy_efetivo}</span>
         </div>
 
-        {#if result.rewardAmount !== undefined}
-          <div class="result-item">
-            <span class="result-label">Potencial de Ganho (USD):</span>
-            <span class="result-value result-reward">${result.rewardAmount.toFixed(2)}</span>
-          </div>
-        {/if}
-
-        {#if result.riskRewardRatio !== undefined}
-          <div class="result-item">
-            <span class="result-label">Razão Risco/Ganho:</span>
-            <span class="result-value">{result.riskRewardRatio.toFixed(2)}</span>
-          </div>
-        {/if}
+        <div class="result-item">
+          <span class="result-label">Distância do Stop:</span>
+          <span class="result-value">{result.stop_distance}</span>
+        </div>
       </div>
 
       <p class="result-note">
-        ℹ️ Estes valores são baseados em cálculos locais. Validar com seu broker.
+        ℹ️ Valores calculados pelo backend. Validar com seu broker.
       </p>
     </div>
   {/if}
