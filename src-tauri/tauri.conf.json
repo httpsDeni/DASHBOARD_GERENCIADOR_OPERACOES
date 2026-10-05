@@ -4,8 +4,8 @@
   "identifier": "com.gerenciador-risco.app",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
-    "devPath": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build:frontend",
+    "devUrl": "http://localhost:5173",
     "frontendDist": "../dist"
   },
   "app": {
@@ -26,11 +26,6 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "msi"],
-    "nsis": {
-      "installerIcon": null,
-      "uninstallerIcon": null,
-      "installerHeaderIcon": null
-    }
+    "targets": ["nsis", "msi"]
   }
 }
