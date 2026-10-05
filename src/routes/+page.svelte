@@ -4,12 +4,15 @@
   import TradeSizingForm from '$components/TradeSizingForm.svelte';
   import MonthlyDrilldown from '$components/MonthlyDrilldown.svelte';
   import CreateAccountModal from '$components/CreateAccountModal.svelte';
+  import PlanTradeModal from '$components/PlanTradeModal.svelte';
+  import CloseTradeList from '$components/CloseTradeList.svelte';
   import type { MonthMetrics, TradeDto, AccountDto, YearlyStatsDto, MonthlyStatsDto } from '$lib/types';
 
-  let currentTab: 'dashboard' | 'calculator' | 'drilldown' = 'dashboard';
+  let currentTab: 'dashboard' | 'calculator' | 'plan-trade' | 'close-trade' | 'drilldown' = 'dashboard';
   let selectedMonth: number | null = null;
   let selectedYear: number = new Date().getFullYear();
   let createAccountModalOpen: boolean = true; // Abrir logo no inicio
+  let planTradeModalOpen: boolean = false;
 
   // Estado da conta
   let currentAccount: AccountDto | null = null;
@@ -74,6 +77,26 @@
     currentTab = 'dashboard';
     selectedMonth = null;
   }
+
+  function handleTradePlanned(trade: TradeDto): void {
+    // Adicionar novo trade à lista
+    trades = [trade, ...trades];
+    // Recarregar relatórios para refletir o novo trade
+    loadYearReport();
+    if (selectedMonth !== null) {
+      loadMonthlyReport(selectedMonth, selectedYear);
+    }
+  }
+
+  function handleTradeClosed(trade: TradeDto): void {
+    // Atualizar trade fechado na lista
+    trades = trades.map(t => (t.id === trade.id ? trade : t));
+    // Recarregar relatórios para refletir o P&L atualizado
+    loadYearReport();
+    if (selectedMonth !== null) {
+      loadMonthlyReport(selectedMonth, selectedYear);
+    }
+  }
 </script>
 
 <svelte:head>
@@ -97,20 +120,34 @@
     </div>
   {:else}
     <div class="tab-navigation">
-      <button
-        class="tab-button {currentTab === 'dashboard' ? 'active' : ''}"
-        on:click={() => (currentTab = 'dashboard')}
-        aria-current={currentTab === 'dashboard' ? 'page' : undefined}
-      >
-        📊 Dashboard
-      </button>
-      <button
-        class="tab-button {currentTab === 'calculator' ? 'active' : ''}"
-        on:click={() => (currentTab = 'calculator')}
-        aria-current={currentTab === 'calculator' ? 'page' : undefined}
-      >
-        🧮 Calculadora
-      </button>
+      <div class="tabs-group">
+        <button
+          class="tab-button {currentTab === 'dashboard' ? 'active' : ''}"
+          on:click={() => (currentTab = 'dashboard')}
+          aria-current={currentTab === 'dashboard' ? 'page' : undefined}
+        >
+          📊 Dashboard
+        </button>
+        <button
+          class="tab-button {currentTab === 'calculator' ? 'active' : ''}"
+          on:click={() => (currentTab = 'calculator')}
+          aria-current={currentTab === 'calculator' ? 'page' : undefined}
+        >
+          🧮 Calculadora
+        </button>
+        <button
+          class="tab-button {currentTab === 'plan-trade' ? 'active' : ''}"
+          on:click={() => (planTradeModalOpen = true)}
+        >
+          ➕ Planejar Trade
+        </button>
+        <button
+          class="tab-button {currentTab === 'close-trade' ? 'active' : ''}"
+          on:click={() => (currentTab = 'close-trade')}
+        >
+          🔚 Fechar Trades
+        </button>
+      </div>
       <div class="account-info">
         Conta: {currentAccount.id.substring(0, 8)}... | Saldo: {currentAccount.balance_inicial} {currentAccount.ccy}
       </div>
@@ -134,6 +171,20 @@
       {#if currentTab === 'calculator'}
         <section class="tab-content" aria-label="Calculadora de posicionamento">
           <TradeSizingForm />
+        </section>
+      {/if}
+
+      {#if currentTab === 'close-trade'}
+        <section class="tab-content" aria-label="Fechar trades">
+          {#if loading}
+            <div class="loading">Carregando dados...</div>
+          {:else}
+            <CloseTradeList
+              {trades}
+              accountId={currentAccount?.id || ''}
+              onTradeClosed={handleTradeClosed}
+            />
+          {/if}
         </section>
       {/if}
 
@@ -161,6 +212,15 @@
   {/if}
 
   <CreateAccountModal isOpen={createAccountModalOpen} onAccountCreated={handleAccountCreated} />
+
+  {#if currentAccount}
+    <PlanTradeModal
+      isOpen={planTradeModalOpen}
+      accountId={currentAccount.id}
+      balance={currentAccount.balance_inicial}
+      onTradePlanned={handleTradePlanned}
+    />
+  {/if}
 
   <footer class="app-footer">
     <p>
@@ -260,18 +320,26 @@
     padding: 0 2rem;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .tabs-group {
+    display: flex;
+    gap: 0;
+    flex: 1;
   }
 
   .tab-button {
-    padding: 1rem 1.5rem;
+    padding: 1rem 1rem;
     background: none;
     border: none;
     border-bottom: 3px solid transparent;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 500;
     color: #6b7280;
     transition: all 0.2s;
+    white-space: nowrap;
   }
 
   .tab-button:hover {
