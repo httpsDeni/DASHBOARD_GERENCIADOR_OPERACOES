@@ -1,5 +1,5 @@
 {
-  "$schema": "../../../node_modules/@tauri-apps/cli/schema.json",
+  "$schema": "../../node_modules/@tauri-apps/cli/schema.json",
   "identifier": "default",
   "description": "Default capability for Gerenciador de Risco",
   "windows": ["main"],
@@ -7,6 +7,11 @@
     "window:allow-close",
     "window:allow-hide",
     "window:allow-show",
-    "window:allow-set-title"
+    "window:allow-set-title",
+    "core:allow-calculate-position-size",
+    "core:allow-plan-trade",
+    "core:allow-close-trade",
+    "core:allow-monthly-report",
+    "core:allow-year-report"
   ]
 }
